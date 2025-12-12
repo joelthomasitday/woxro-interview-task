@@ -18,7 +18,7 @@ const getMobileAdjustedPositions = (isMobile: boolean) => {
   if (!isMobile) return null;
   
   return {
-    "cube-1": { top: -50, left: 20 },
+    "cube-1": { top: 50, left: 20 },
     "cube-2": { top: 70, left: 20 },
     "cube-3": { top: 20, left: 20 },
     "cube-4": { top: 70, left: 80 },
