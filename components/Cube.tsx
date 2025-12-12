@@ -7,6 +7,11 @@ interface CubeProps {
 }
 
 const Cube = forwardRef<HTMLDivElement, CubeProps>(({ size = 150, className = "", cubeClass = "" }, ref) => {
+  const faceStyle = {
+    width: `${size}px`,
+    height: `${size}px`,
+  };
+
   return (
     <div 
       ref={ref}
@@ -18,12 +23,12 @@ const Cube = forwardRef<HTMLDivElement, CubeProps>(({ size = 150, className = ""
         transformStyle: "preserve-3d",
       }}
     >
-      <div className="front" style={{ transform: `translateZ(${size / 2}px)` }}></div>
-      <div className="back" style={{ transform: `translateZ(-${size / 2}px) rotateY(180deg)` }}></div>
-      <div className="right" style={{ transform: `translateX(${size / 2}px) rotateY(90deg)` }}></div>
-      <div className="left" style={{ transform: `translateX(-${size / 2}px) rotateY(-90deg)` }}></div>
-      <div className="top" style={{ transform: `translateY(-${size / 2}px) rotateX(90deg)` }}></div>
-      <div className="bottom" style={{ transform: `translateY(${size / 2}px) rotateX(-90deg)` }}></div>
+      <div className="front" style={{ ...faceStyle, transform: `translateZ(${size / 2}px)` }}></div>
+      <div className="back" style={{ ...faceStyle, transform: `translateZ(-${size / 2}px) rotateY(180deg)` }}></div>
+      <div className="right" style={{ ...faceStyle, transform: `translateX(${size / 2}px) rotateY(90deg)` }}></div>
+      <div className="left" style={{ ...faceStyle, transform: `translateX(-${size / 2}px) rotateY(-90deg)` }}></div>
+      <div className="top" style={{ ...faceStyle, transform: `translateY(-${size / 2}px) rotateX(90deg)` }}></div>
+      <div className="bottom" style={{ ...faceStyle, transform: `translateY(${size / 2}px) rotateX(-90deg)` }}></div>
     </div>
   );
 });

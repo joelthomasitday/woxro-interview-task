@@ -125,6 +125,39 @@ section {
   transform: translateY(75px) rotateX(-90deg);
 }
 
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .cube {
+    width: 80px;
+    height: 80px;
+  }
+
+  .cube > div {
+    width: 80px;
+    height: 80px;
+  }
+
+  .header-1 {
+    width: 85%;
+  }
+
+  .header-1 h1 {
+    font-size: 2rem;
+  }
+
+  .header-2 {
+    width: 85%;
+  }
+
+  .header-2 h2 {
+    font-size: 1.5rem;
+  }
+
+  .header-2 p {
+    font-size: 1rem;
+  }
+}
+
 .cube-1 {
   top: -55%;
   left: 37.5%;

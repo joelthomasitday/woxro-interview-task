@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useLayoutEffect, useRef, useEffect } from "react";
+import React, { useLayoutEffect, useRef, useEffect, useState } from "react";
 import Cube from "@/components/Cube";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -13,6 +13,20 @@ const interpolate = (start: number, end: number, progress: number) => {
   return start + (end - start) * progress;
 };
 
+// Mobile-specific position adjustments to prevent overflow
+const getMobileAdjustedPositions = (isMobile: boolean) => {
+  if (!isMobile) return null;
+  
+  return {
+    "cube-1": { top: -50, left: 20 },
+    "cube-2": { top: 70, left: 20 },
+    "cube-3": { top: 20, left: 20 },
+    "cube-4": { top: 70, left: 80 },
+    "cube-5": { top: 20, left: 80 },
+    "cube-6": { top: 50, left: 80 },
+  };
+};
+
 export default function Home() {
   const stickySectionRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -20,8 +34,22 @@ export default function Home() {
   const header1Ref = useRef<HTMLDivElement>(null);
   const header2Ref = useRef<HTMLDivElement>(null);
   const cubeRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [cubeSize, setCubeSize] = useState(150);
 
   useEffect(() => {
+    // Detect mobile and set responsive cube size
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setCubeSize(mobile ? 80 : 150);
+      // Refresh ScrollTrigger on resize
+      ScrollTrigger.refresh();
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
     // Initialize Lenis - wait for script to load
     const initLenis = () => {
       if (typeof window !== "undefined" && (window as any).Lenis) {
@@ -51,11 +79,15 @@ export default function Home() {
       }, 100);
       return () => {
         clearTimeout(timer);
+        window.removeEventListener("resize", checkMobile);
         if (cleanup) cleanup();
       };
     }
 
-    return cleanup || undefined;
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      if (cleanup) cleanup();
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -66,6 +98,7 @@ export default function Home() {
     const cubesContainer = cubesContainerRef.current;
     const header1 = header1Ref.current;
     const header2 = header2Ref.current;
+    const mobileAdjustments = getMobileAdjustedPositions(isMobile);
 
     // Load images into cube faces using available cube images
     const cubesFaces = cubesContainer.querySelectorAll(".cube > div");
@@ -129,8 +162,23 @@ export default function Home() {
 
           const { initial, final } = data;
 
-          const currentTop = interpolate(initial.top, final.top, firstPhaseProgress);
-          const currentLeft = interpolate(initial.left, final.left, firstPhaseProgress);
+          // Use mobile-adjusted positions if on mobile, otherwise use original
+          let finalTop = final.top;
+          let finalLeft = final.left;
+          let initialTop = initial.top;
+          let initialLeft = initial.left;
+
+          if (mobileAdjustments && mobileAdjustments[cubeClass as keyof typeof mobileAdjustments]) {
+            const mobilePos = mobileAdjustments[cubeClass as keyof typeof mobileAdjustments];
+            finalTop = mobilePos.top;
+            finalLeft = mobilePos.left;
+            // Keep initial positions closer to center on mobile
+            initialTop = initial.top * 0.8;
+            initialLeft = initial.left;
+          }
+
+          const currentTop = interpolate(initialTop, finalTop, firstPhaseProgress);
+          const currentLeft = interpolate(initialLeft, finalLeft, firstPhaseProgress);
           const currentRotateX = interpolate(initial.rotateX, final.rotateX, firstPhaseProgress);
           const currentRotateY = interpolate(initial.rotateY, final.rotateY, firstPhaseProgress);
           const currentRotateZ = interpolate(initial.rotateZ, final.rotateZ, firstPhaseProgress);
@@ -158,7 +206,7 @@ export default function Home() {
     return () => {
       ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
     };
-  }, []);
+  }, [isMobile]);
 
   const addToRefs = (el: HTMLDivElement | null, index: number) => {
     cubeRefs.current[index] = el;
@@ -182,12 +230,12 @@ export default function Home() {
           </div>
         </div>
         <div ref={cubesContainerRef} className="cubes">
-          <Cube ref={(el) => addToRefs(el, 0)} cubeClass="cube-1" />
-          <Cube ref={(el) => addToRefs(el, 1)} cubeClass="cube-2" />
-          <Cube ref={(el) => addToRefs(el, 2)} cubeClass="cube-3" />
-          <Cube ref={(el) => addToRefs(el, 3)} cubeClass="cube-4" />
-          <Cube ref={(el) => addToRefs(el, 4)} cubeClass="cube-5" />
-          <Cube ref={(el) => addToRefs(el, 5)} cubeClass="cube-6" />
+          <Cube ref={(el) => addToRefs(el, 0)} cubeClass="cube-1" size={cubeSize} />
+          <Cube ref={(el) => addToRefs(el, 1)} cubeClass="cube-2" size={cubeSize} />
+          <Cube ref={(el) => addToRefs(el, 2)} cubeClass="cube-3" size={cubeSize} />
+          <Cube ref={(el) => addToRefs(el, 3)} cubeClass="cube-4" size={cubeSize} />
+          <Cube ref={(el) => addToRefs(el, 4)} cubeClass="cube-5" size={cubeSize} />
+          <Cube ref={(el) => addToRefs(el, 5)} cubeClass="cube-6" size={cubeSize} />
         </div>
         <div ref={header1Ref} className="header-1">
           <h1>
