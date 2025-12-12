@@ -1,140 +1,162 @@
-
-
 "use client";
 
-import React, { useLayoutEffect, useRef } from "react";
-import Image from "next/image";
+import React, { useLayoutEffect, useRef, useEffect } from "react";
 import Cube from "@/components/Cube";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { cubesData } from "@/data/cubesData";
+
 
 gsap.registerPlugin(ScrollTrigger);
 
-const cubeImages = [
-  "/cube1.png",
-  "/cube2.png",
-  "/cube3.png",
-  "/cube4.png",
-  "/cube5.png",
-  "/cube1.png",
-  "/cube2.png",
-  "/cube3.png",
-];
+const interpolate = (start: number, end: number, progress: number) => {
+  return start + (end - start) * progress;
+};
 
 export default function Home() {
-  const mainRef = useRef<HTMLElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const stickySectionRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
-  // Store refs for the 6 desktop cubes
+  const cubesContainerRef = useRef<HTMLDivElement>(null);
+  const header1Ref = useRef<HTMLDivElement>(null);
+  const header2Ref = useRef<HTMLDivElement>(null);
   const cubeRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  useLayoutEffect(() => {
-    let ctx = gsap.context(() => {}); // Initialize empty context
-
-    const initAnimation = () => {
-      // Revert previous context if any
-      if (ctx) ctx.revert();
-      
-      ctx = gsap.context(() => {
-        if (!mainRef.current || !containerRef.current || !logoRef.current) return;
-
-        const logo = logoRef.current;
-        const logoRect = logo.getBoundingClientRect();
-        // Calculate center relative to the viewport (which matches the pinned container initially)
-        const logoCenterX = logoRect.left + logoRect.width / 2;
-        const logoCenterY = logoRect.top + logoRect.height / 2;
-
-        const cubes = cubeRefs.current.filter(Boolean);
+  useEffect(() => {
+    // Initialize Lenis - wait for script to load
+    const initLenis = () => {
+      if (typeof window !== "undefined" && (window as any).Lenis) {
+        const Lenis = (window as any).Lenis;
+        const lenis = new Lenis();
         
-        // Calculate start offsets strictly
-        const moves = cubes.map((cube) => {
-          if (!cube) return { x: 0, y: 0 };
-          // Get natural position of the cube in the document flow
-          const rect = cube.getBoundingClientRect();
-          const cubeCenterX = rect.left + rect.width / 2;
-          const cubeCenterY = rect.top + rect.height / 2;
-          
-          return {
-            x: logoCenterX - cubeCenterX,
-            y: logoCenterY - cubeCenterY
-          };
+        lenis.on("scroll", ScrollTrigger.update);
+        
+        gsap.ticker.add((time) => {
+          lenis.raf(time * 1000);
         });
+        
+        gsap.ticker.lagSmoothing(0);
 
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: mainRef.current,
-            start: "top top",
-            end: "+=200%", 
-            scrub: 1, // Smooth interaction
-            pin: true,
-            invalidateOnRefresh: true, // Recalculate on resize
-          }
-        });
-
-        // 1. Move Page Up
-        tl.to(containerRef.current, {
-          y: "-100vh",
-          ease: "none",
-          duration: 10
-        }, 0);
-
-        // 2. Animate Cubes
-        cubes.forEach((cube, i) => {
-          if (!cube) return;
-          const start = moves[i];
-          
-          const midX = start.x * 0.5 + (Math.random() * 300 - 150); 
-          const midY = start.y * 0.5 + (Math.random() * 300 - 150);
-
-          // Start EXACTLY at logo
-          gsap.set(cube, { 
-            x: start.x, 
-            y: start.y, 
-            scale: 0.05, // Start as a dot
-            opacity: 1,  // Visible immediately
-            rotationX: Math.random() * 360, 
-            rotationY: Math.random() * 360 
-          });
-
-          // Fly out
-          tl.to(cube, {
-            x: midX,
-            y: midY,
-            scale: 0.6,
-            rotationX: "+=180",
-            rotationY: "+=180",
-            ease: "power1.inOut",
-            duration: 4
-          }, 0);
-
-          // Land
-          tl.to(cube, {
-            x: 0, 
-            y: 0,
-            scale: 1,
-            rotationX: 0, 
-            rotationY: 0,
-            rotationZ: 0,
-            ease: "power2.out",
-            duration: 6
-          }, 4);
-        });
-
-      }, mainRef);
+        return () => {
+          lenis.destroy();
+        };
+      }
+      return null;
     };
 
-    // Initial load
-    initAnimation();
+    // Try immediately, then retry after a short delay if needed
+    let cleanup = initLenis();
+    if (!cleanup) {
+      const timer = setTimeout(() => {
+        cleanup = initLenis();
+      }, 100);
+      return () => {
+        clearTimeout(timer);
+        if (cleanup) cleanup();
+      };
+    }
 
-    // Force refresh after short delay to catch layout shifts (e.g. image loads)
-    const timer = setTimeout(() => {
-        initAnimation();
-        ScrollTrigger.refresh();
-    }, 200);
+    return cleanup || undefined;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!stickySectionRef.current || !logoRef.current || !cubesContainerRef.current || !header1Ref.current || !header2Ref.current) return;
+
+    const stickySection = stickySectionRef.current;
+    const logo = logoRef.current;
+    const cubesContainer = cubesContainerRef.current;
+    const header1 = header1Ref.current;
+    const header2 = header2Ref.current;
+
+    // Load images into cube faces using available cube images
+    const cubesFaces = cubesContainer.querySelectorAll(".cube > div");
+    const cubeImages = ["/cube1.png", "/cube2.png", "/cube3.png", "/cube4.png", "/cube5.png"];
+    let imageIndex = 0;
+    cubesFaces.forEach((face) => {
+      // Only add image if one doesn't already exist
+      if (!face.querySelector("img")) {
+        const img = document.createElement("img");
+        // Cycle through the 5 available images
+        img.src = cubeImages[imageIndex % cubeImages.length];
+        img.alt = `Cube Image ${imageIndex + 1}`;
+        face.appendChild(img);
+        imageIndex++;
+      }
+    });
+
+    const stickyHeight = window.innerHeight * 4;
+
+    ScrollTrigger.create({
+      trigger: stickySection,
+      start: "top top",
+      end: `+=${stickyHeight}px`,
+      scrub: 1,
+      pin: true,
+      pinSpacing: true,
+      onUpdate: (self) => {
+        // Logo blur and opacity
+        const initialProgress = Math.min(self.progress * 20, 1);
+        logo.style.filter = `blur(${interpolate(0, 20, initialProgress)}px)`;
+        const logoOpacityProgress = self.progress >= 0.02 ? Math.min((self.progress - 0.02) * 100, 1) : 0;
+        logo.style.opacity = String(1 - logoOpacityProgress);
+
+        // Cubes container opacity
+        const cubesOpacityProgress = self.progress > 0.01 ? Math.min((self.progress - 0.01) * 100, 1) : 0;
+        cubesContainer.style.opacity = String(cubesOpacityProgress);
+
+        // Header 1 animations
+        const header1Progress = Math.min(self.progress * 2.5, 1);
+        header1.style.transform = `translate(-50%, -50%) scale(${interpolate(1, 1.5, header1Progress)})`;
+        header1.style.filter = `blur(${interpolate(0, 20, header1Progress)}px)`;
+        header1.style.opacity = String(1 - header1Progress);
+
+        // Header 2 animations
+        const header2StartProgress = (self.progress - 0.4) * 10;
+        const header2Progress = Math.max(0, Math.min(header2StartProgress, 1));
+        const header2scale = interpolate(0.75, 1, header2Progress);
+        const header2Blur = interpolate(10, 0, header2Progress);
+
+        header2.style.transform = `translate(-50%, -50%) scale(${header2scale})`;
+        header2.style.filter = `blur(${header2Blur}px)`;
+        header2.style.opacity = String(header2Progress);
+
+        // Cube animations
+        const firstPhaseProgress = Math.min(self.progress * 2, 1);
+        const secondPhaseProgress = self.progress >= 0.5 ? (self.progress - 0.5) * 2 : 0;
+
+        Object.entries(cubesData).forEach(([cubeClass, data], index) => {
+          const cube = cubeRefs.current[index];
+          if (!cube) return;
+
+          const { initial, final } = data;
+
+          const currentTop = interpolate(initial.top, final.top, firstPhaseProgress);
+          const currentLeft = interpolate(initial.left, final.left, firstPhaseProgress);
+          const currentRotateX = interpolate(initial.rotateX, final.rotateX, firstPhaseProgress);
+          const currentRotateY = interpolate(initial.rotateY, final.rotateY, firstPhaseProgress);
+          const currentRotateZ = interpolate(initial.rotateZ, final.rotateZ, firstPhaseProgress);
+          const currentZ = interpolate(initial.z, final.z, firstPhaseProgress);
+
+          let additionalRotation = 0;
+          if (cubeClass === "cube-2") {
+            additionalRotation = interpolate(0, 180, secondPhaseProgress);
+          } else if (cubeClass === "cube-4") {
+            additionalRotation = interpolate(0, -180, secondPhaseProgress);
+          }
+
+          cube.style.top = `${currentTop}%`;
+          cube.style.left = `${currentLeft}%`;
+          cube.style.transform = `
+            translate3d(-50%, -50%, ${currentZ}px)
+            rotateX(${currentRotateX}deg)
+            rotateY(${currentRotateY + additionalRotation}deg)
+            rotateZ(${currentRotateZ}deg)
+          `;
+        });
+      },
+    });
 
     return () => {
-        if (ctx) ctx.revert();
-        clearTimeout(timer);
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
     };
   }, []);
 
@@ -143,82 +165,48 @@ export default function Home() {
   };
 
   return (
-    <main ref={mainRef} className="h-screen w-full overflow-hidden bg-[#1E1E1E]"> 
-      {/* Container for pinned scrolling - removed h-full to allow natural height */}
-      <div ref={containerRef} className="w-full relative will-change-transform">
-        
-        {/* Hero Section */}
-        <section className="hero relative min-h-screen w-full flex flex-col items-center justify-center px-4 overflow-hidden bg-[#2b1810]">
-          
-          {/* 1. Header Logo Section */}
-          <div ref={logoRef} id="hero-logo" className="mb-8 relative w-[120px] h-[75px] md:w-[154px] md:h-[96px] z-20">
-             <Image 
-               src="/logo.png" 
-               alt="Logo" 
-               fill
-               className="object-contain"
-               priority
-             />
+    <>
+      <section ref={stickySectionRef} className="sticky">
+        <div ref={logoRef} className="logo">
+          <div className="col">
+            <div className="block block-1"></div>
+            <div className="block block-2"></div>
           </div>
-
-          {/* 2. Main Heading */}
-          <h1 className="font-heading text-[32px] sm:text-[40px] md:text-[64px] leading-[105%] tracking-[0%] text-center text-[#EADDCD] font-normal w-full max-w-[692px] md:max-w-[1057px] mx-auto z-10">
-            The First Media Company crafted For the Digital First generation
+          <div className="col">
+            <div className="block block-3"></div>
+            <div className="block block-4"></div>
+          </div>
+          <div className="col">
+            <div className="block block-5"></div>
+            <div className="block block-6"></div>
+          </div>
+        </div>
+        <div ref={cubesContainerRef} className="cubes">
+          <Cube ref={(el) => addToRefs(el, 0)} cubeClass="cube-1" />
+          <Cube ref={(el) => addToRefs(el, 1)} cubeClass="cube-2" />
+          <Cube ref={(el) => addToRefs(el, 2)} cubeClass="cube-3" />
+          <Cube ref={(el) => addToRefs(el, 3)} cubeClass="cube-4" />
+          <Cube ref={(el) => addToRefs(el, 4)} cubeClass="cube-5" />
+          <Cube ref={(el) => addToRefs(el, 5)} cubeClass="cube-6" />
+        </div>
+        <div ref={header1Ref} className="header-1">
+          <h1>
+            The first media company crafted for the digital first generation.
           </h1>
-        </section>
-
-        {/* 5. Bottom Section */}
-        <section className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-[#2b1810]">
-          
-          {/* Desktop Cubes (Absolute) - Only visible on MD+ */}
-          {/* Left Side */}
-          <div className="hidden md:block absolute left-[22%] top-[18%] -translate-x-1/2 -translate-y-1/2 z-30">
-            <Cube ref={(el) => addToRefs(el, 0)} size={120} images={cubeImages} />
-          </div>
-          <div className="hidden md:block absolute left-[10%] top-[42%] -translate-x-1/2 -translate-y-1/2 z-30">
-            <Cube ref={(el) => addToRefs(el, 1)} size={120} images={cubeImages} />
-          </div>
-          <div className="hidden md:block absolute left-[22%] top-[68%] -translate-x-1/2 -translate-y-1/2 z-30">
-            <Cube ref={(el) => addToRefs(el, 2)} size={120} images={cubeImages} />
-          </div>
-
-          {/* Right Side */}
-          <div className="hidden md:block absolute right-[22%] top-[18%] translate-x-1/2 -translate-y-1/2 z-30">
-            <Cube ref={(el) => addToRefs(el, 3)} size={120} images={cubeImages} />
-          </div>
-          <div className="hidden md:block absolute right-[10%] top-[42%] translate-x-1/2 -translate-y-1/2 z-30">
-            <Cube ref={(el) => addToRefs(el, 4)} size={120} images={cubeImages} />
-          </div>
-          <div className="hidden md:block absolute right-[22%] top-[68%] translate-x-1/2 -translate-y-1/2 z-30">
-            <Cube ref={(el) => addToRefs(el, 5)} size={120} images={cubeImages} />
-          </div>
-
-          {/* Center Content Container */}
-          <div className="relative w-full max-w-6xl flex-1 flex flex-col justify-center items-center mt-10 md:mt-0 z-20">
-            
-            {/* 4. Center Subheading + Paragraph */}
-            <div className="text-center md:max-w-[500px] z-10 px-4">
-              <h2 className="font-body font-bold text-[20.81px] leading-[100%] text-[#EADDCD] mb-4">
-                Where innovation meets precision.
-              </h2>
-              <p className="font-body font-normal text-[17.81px] leading-[130%] text-[#EADDCD] opacity-90">
-                Symphonia unites visionary thinkers, creative architects, and analytical experts, collaborating seamlessly to transform challenges into opportunities. Together, we deliver tailored solutions that drive impact and inspire growth.
-              </p>
-            </div>
-
-            {/* Mobile View: Cubes below text (Static, no scroll trigger logic applied here for now) */}
-             <div className="md:hidden grid grid-cols-2 gap-6 mt-12">
-               <div className="flex justify-center"><Cube size={80} images={cubeImages} /></div>
-               <div className="flex justify-center"><Cube size={80} images={cubeImages} /></div>
-               <div className="flex justify-center"><Cube size={80} images={cubeImages} /></div>
-               <div className="flex justify-center"><Cube size={80} images={cubeImages} /></div>
-               <div className="flex justify-center"><Cube size={80} images={cubeImages} /></div>
-               <div className="flex justify-center"><Cube size={80} images={cubeImages} /></div>
-             </div>
-
-          </div>
-        </section>
-      </div>
-    </main>
+        </div>
+        <div ref={header2Ref} className="header-2">
+          <h2>Where innovation meets precision.</h2>
+          <p>
+            Symphonia unites visionary thinkers, creative architects, and
+            analytical experts, collaborating seamlessly to transform challenges
+            into oppurtunities. Together, we deliver tailored solutions that drive
+            impact and inspire growth.
+          </p>
+        </div>
+      </section>
+      <section className="about">
+        <h2>Your next section goes here.</h2>
+      </section>
+    </>
   );
 }
