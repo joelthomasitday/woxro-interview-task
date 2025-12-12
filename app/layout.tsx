@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <Script
           src="https://unpkg.com/lenis@1.1.19/dist/lenis.min.js"
