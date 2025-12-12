@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   title: "Symphonia - Digital First",
   description:
     "The First Media Company crafted For the Digital First generation",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

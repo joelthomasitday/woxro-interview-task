@@ -1,112 +1,48 @@
-export const cubesData = {
-    "cube-1":{
-        initial:{
-            top:-55,
-            left:37.5,
-            rotateX:360,
-            rotateY:-360,
-            rotateZ:-48,
-            z:-30000,
-        },
-        final:{
-            top:50,
-            left:15,
-            rotateX:0,
-            rotateY:3,
-            rotateZ:0,
-            z:0,
-        },
-    },
-    
-    "cube-2":{
-        initial:{
-            top:-35,
-            left:32.5,
-            rotateX:-360,
-            rotateY:360,
-            rotateZ:90,
-            z:-30000,
-        },
-        final:{
-            top:75,
-            left:25,
-            rotateX:1,
-            rotateY:2,
-            rotateZ:0,
-            z:0,
-        },
-    },
-    "cube-3":{
-        initial:{
-            top:-65,
-            left:50,
-            rotateX:-360,
-            rotateY:-360,
-            rotateZ:-180,
-            z:-30000,
-        },
-        final:{
-            top:25,
-            left:25,
-            rotateX:-1,
-            rotateY:2,
-            rotateZ:0,
-            z:0,
-        },
-    },
-    "cube-4":{
-        initial:{
-            top:-35,
-            left:50,
-            rotateX:-360,
-            rotateY:-360,
-            rotateZ:-180,
-            z:-30000,
-        },
-        final:{
-            top:75,
-            left:75,
-            rotateX:1,
-            rotateY:-2,
-            rotateZ:0,
-            z:0,
-        },
-    },
-    "cube-5":{
-        initial:{
-            top:-55,
-            left:62.5,
-            rotateX:360,
-            rotateY:360,
-            rotateZ:-135,
-            z:-30000,
-        },
-        final:{
-            top:25,
-            left:75,
-            rotateX:-1,
-            rotateY:-2,
-            rotateZ:0,
-            z:0,
-        },
-    },
-    "cube-6":{
-        initial:{
-            top:-35,
-            left:67.5,
-            rotateX:-180,
-            rotateY:-360,
-            rotateZ:-180,
-            z:-30000,
-        },
-        final:{
-            top:50,
-            left:85,
-            rotateX:0,
-            rotateY:-3,
-            rotateZ:0,
-            z:0,
-        },
-    },
-
+type PositionState = {
+    yPos: number
+    xPos: number
+    xAngle: number
+    yAngle: number
+    zAngle: number
+    depth: number
 }
+
+type BoxAnimation = {
+    start: PositionState
+    end: PositionState
+}
+
+const BOX_ANIMATION_CONFIG: Record<string, BoxAnimation> = {}
+
+BOX_ANIMATION_CONFIG["box-a"] = {
+    start: { yPos: -55, xPos: 37.5, xAngle: 360, yAngle: -360, zAngle: -48, depth: -30000 },
+    end: { yPos: 50, xPos: 15, xAngle: 0, yAngle: 3, zAngle: 0, depth: 0 }
+}
+
+BOX_ANIMATION_CONFIG["box-b"] = {
+    start: { yPos: -35, xPos: 32.5, xAngle: -360, yAngle: 360, zAngle: 90, depth: -30000 },
+    end: { yPos: 75, xPos: 25, xAngle: 1, yAngle: 2, zAngle: 0, depth: 0 }
+}
+
+BOX_ANIMATION_CONFIG["box-c"] = {
+    start: { yPos: -65, xPos: 50, xAngle: -360, yAngle: -360, zAngle: -180, depth: -30000 },
+    end: { yPos: 25, xPos: 25, xAngle: -1, yAngle: 2, zAngle: 0, depth: 0 }
+}
+
+BOX_ANIMATION_CONFIG["box-d"] = {
+    start: { yPos: -35, xPos: 50, xAngle: -360, yAngle: -360, zAngle: -180, depth: -30000 },
+    end: { yPos: 75, xPos: 75, xAngle: 1, yAngle: -2, zAngle: 0, depth: 0 }
+}
+
+BOX_ANIMATION_CONFIG["box-e"] = {
+    start: { yPos: -55, xPos: 62.5, xAngle: 360, yAngle: 360, zAngle: -135, depth: -30000 },
+    end: { yPos: 25, xPos: 75, xAngle: -1, yAngle: -2, zAngle: 0, depth: 0 }
+}
+
+BOX_ANIMATION_CONFIG["box-f"] = {
+    start: { yPos: -35, xPos: 67.5, xAngle: -180, yAngle: -360, zAngle: -180, depth: -30000 },
+    end: { yPos: 50, xPos: 85, xAngle: 0, yAngle: -3, zAngle: 0, depth: 0 }
+}
+
+export { BOX_ANIMATION_CONFIG }
+export type { PositionState, BoxAnimation }

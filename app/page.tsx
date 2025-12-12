@@ -1,260 +1,266 @@
-"use client";
+"use client"
 
-import React, { useLayoutEffect, useRef, useEffect, useState } from "react";
-import Cube from "@/components/Cube";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { cubesData } from "@/data/cubesData";
+import { useLayoutEffect, useRef, useEffect, useState } from "react"
+import Box3D from "@/components/Cube"
+import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
+import { BOX_ANIMATION_CONFIG } from "@/data/cubesData"
 
+gsap.registerPlugin(ScrollTrigger)
 
-gsap.registerPlugin(ScrollTrigger);
+function lerp(from: number, to: number, t: number): number {
+    return from + (to - from) * t
+}
 
-const interpolate = (start: number, end: number, progress: number) => {
-  return start + (end - start) * progress;
-};
+function getSmallScreenPositions(): Record<string, { vertical: number; horizontal: number }> | null {
+    return null
+}
 
-// Mobile-specific position adjustments to prevent overflow
-const getMobileAdjustedPositions = (isMobile: boolean) => {
-  if (!isMobile) return null;
-  
-  return {
-    "cube-1": { top: 50, left: 20 },
-    "cube-2": { top: 70, left: 20 },
-    "cube-3": { top: 20, left: 20 },
-    "cube-4": { top: 70, left: 80 },
-    "cube-5": { top: 20, left: 80 },
-    "cube-6": { top: 50, left: 80 },
-  };
-};
+function computeSmallScreenLayout(isSmallScreen: boolean): Record<string, { vertical: number; horizontal: number }> | null {
+    if (!isSmallScreen) {
+        return getSmallScreenPositions()
+    }
+    const layout: Record<string, { vertical: number; horizontal: number }> = {}
+    layout["box-a"] = { vertical: 50, horizontal: 20 }
+    layout["box-b"] = { vertical: 70, horizontal: 20 }
+    layout["box-c"] = { vertical: 20, horizontal: 20 }
+    layout["box-d"] = { vertical: 70, horizontal: 80 }
+    layout["box-e"] = { vertical: 20, horizontal: 80 }
+    layout["box-f"] = { vertical: 50, horizontal: 80 }
+    return layout
+}
 
-export default function Home() {
-  const stickySectionRef = useRef<HTMLElement>(null);
-  const logoRef = useRef<HTMLDivElement>(null);
-  const cubesContainerRef = useRef<HTMLDivElement>(null);
-  const header1Ref = useRef<HTMLDivElement>(null);
-  const header2Ref = useRef<HTMLDivElement>(null);
-  const cubeRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
-  const [cubeSize, setCubeSize] = useState(150);
-
-  useEffect(() => {
-    // Detect mobile and set responsive cube size
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      setCubeSize(mobile ? 80 : 150);
-      // Refresh ScrollTrigger on resize
-      ScrollTrigger.refresh();
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    // Initialize Lenis - wait for script to load
-    const initLenis = () => {
-      if (typeof window !== "undefined" && (window as any).Lenis) {
-        const Lenis = (window as any).Lenis;
-        const lenis = new Lenis();
+function attachImagesToBoxFaces(container: HTMLDivElement): void {
+    const allFaces = container.querySelectorAll(".cube > div")
+    const imageUrls = ["/cube1.png", "/cube2.png", "/cube3.png", "/cube4.png", "/cube5.png"]
+    let counter = 0
+    
+    allFaces.forEach(function(faceElement) {
+        const hasImage = faceElement.querySelector("img") !== null
+        if (hasImage) return
         
-        lenis.on("scroll", ScrollTrigger.update);
-        
-        gsap.ticker.add((time) => {
-          lenis.raf(time * 1000);
-        });
-        
-        gsap.ticker.lagSmoothing(0);
+        const imgEl = document.createElement("img")
+        imgEl.src = imageUrls[counter % imageUrls.length]
+        imgEl.alt = "Box Image " + (counter + 1)
+        faceElement.appendChild(imgEl)
+        counter = counter + 1
+    })
+}
 
-        return () => {
-          lenis.destroy();
-        };
-      }
-      return null;
-    };
+function initializeSmoothScroll(): (() => void) | null {
+    if (typeof window === "undefined") return null
+    
+    const LenisClass = (window as any).Lenis
+    if (!LenisClass) return null
+    
+    const scrollInstance = new LenisClass()
+    scrollInstance.on("scroll", ScrollTrigger.update)
+    
+    gsap.ticker.add(function(timestamp) {
+        scrollInstance.raf(timestamp * 1000)
+    })
+    gsap.ticker.lagSmoothing(0)
+    
+    return function cleanup() {
+        scrollInstance.destroy()
+    }
+}
 
-    // Try immediately, then retry after a short delay if needed
-    let cleanup = initLenis();
-    if (!cleanup) {
-      const timer = setTimeout(() => {
-        cleanup = initLenis();
-      }, 100);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener("resize", checkMobile);
-        if (cleanup) cleanup();
-      };
+export default function LandingPage() {
+    const pinnedSectionRef = useRef<HTMLElement>(null)
+    const brandingRef = useRef<HTMLDivElement>(null)
+    const boxContainerRef = useRef<HTMLDivElement>(null)
+    const primaryTextRef = useRef<HTMLDivElement>(null)
+    const secondaryTextRef = useRef<HTMLDivElement>(null)
+    const boxElementRefs = useRef<(HTMLDivElement | null)[]>([])
+    
+    const [isSmallScreen, setIsSmallScreen] = useState(false)
+    const [boxDimension, setBoxDimension] = useState(150)
+
+    useEffect(function setupResizeAndScroll() {
+        function handleResize() {
+            const smallScreen = window.innerWidth < 768
+            setIsSmallScreen(smallScreen)
+            setBoxDimension(smallScreen ? 80 : 150)
+            ScrollTrigger.refresh()
+        }
+
+        handleResize()
+        window.addEventListener("resize", handleResize)
+
+        let cleanupScroll = initializeSmoothScroll()
+        
+        if (cleanupScroll === null) {
+            const delayedInit = setTimeout(function() {
+                cleanupScroll = initializeSmoothScroll()
+            }, 100)
+            
+            return function() {
+                clearTimeout(delayedInit)
+                window.removeEventListener("resize", handleResize)
+                if (cleanupScroll) cleanupScroll()
+            }
+        }
+
+        return function() {
+            window.removeEventListener("resize", handleResize)
+            if (cleanupScroll) cleanupScroll()
+        }
+    }, [])
+
+    useLayoutEffect(function setupScrollAnimation() {
+        const pinnedSection = pinnedSectionRef.current
+        const branding = brandingRef.current
+        const boxContainer = boxContainerRef.current
+        const primaryText = primaryTextRef.current
+        const secondaryText = secondaryTextRef.current
+        
+        if (!pinnedSection || !branding || !boxContainer || !primaryText || !secondaryText) {
+            return
+        }
+
+        const smallScreenLayout = computeSmallScreenLayout(isSmallScreen)
+        attachImagesToBoxFaces(boxContainer)
+
+        const scrollDistance = window.innerHeight * 4
+
+        ScrollTrigger.create({
+            trigger: pinnedSection,
+            start: "top top",
+            end: "+=" + scrollDistance + "px",
+            scrub: 1,
+            pin: true,
+            pinSpacing: true,
+            onUpdate: function(trigger) {
+                const scrollProgress = trigger.progress
+                
+                const brandBlurAmount = Math.min(scrollProgress * 20, 1)
+                branding.style.filter = "blur(" + lerp(0, 20, brandBlurAmount) + "px)"
+                
+                const brandFadeProgress = scrollProgress >= 0.02 ? Math.min((scrollProgress - 0.02) * 100, 1) : 0
+                branding.style.opacity = String(1 - brandFadeProgress)
+
+                const boxFadeProgress = scrollProgress > 0.01 ? Math.min((scrollProgress - 0.01) * 100, 1) : 0
+                boxContainer.style.opacity = String(boxFadeProgress)
+
+                const primaryProgress = Math.min(scrollProgress * 2.5, 1)
+                primaryText.style.transform = "translate(-50%, -50%) scale(" + lerp(1, 1.5, primaryProgress) + ")"
+                primaryText.style.filter = "blur(" + lerp(0, 20, primaryProgress) + "px)"
+                primaryText.style.opacity = String(1 - primaryProgress)
+
+                const secondaryStartPoint = (scrollProgress - 0.4) * 10
+                const secondaryProgress = Math.max(0, Math.min(secondaryStartPoint, 1))
+                const secondaryScale = lerp(0.75, 1, secondaryProgress)
+                const secondaryBlur = lerp(10, 0, secondaryProgress)
+
+                secondaryText.style.transform = "translate(-50%, -50%) scale(" + secondaryScale + ")"
+                secondaryText.style.filter = "blur(" + secondaryBlur + "px)"
+                secondaryText.style.opacity = String(secondaryProgress)
+
+                const phase1Progress = Math.min(scrollProgress * 2, 1)
+                const phase2Progress = scrollProgress >= 0.5 ? (scrollProgress - 0.5) * 2 : 0
+
+                const boxKeys = Object.keys(BOX_ANIMATION_CONFIG)
+                
+                for (let idx = 0; idx < boxKeys.length; idx++) {
+                    const boxKey = boxKeys[idx]
+                    const boxEl = boxElementRefs.current[idx]
+                    
+                    if (!boxEl) continue
+
+                    const animData = BOX_ANIMATION_CONFIG[boxKey]
+                    const { start, end } = animData
+
+                    let targetY = end.yPos
+                    let targetX = end.xPos
+                    let sourceY = start.yPos
+                    let sourceX = start.xPos
+
+                    if (smallScreenLayout && smallScreenLayout[boxKey]) {
+                        const mobileCoords = smallScreenLayout[boxKey]
+                        targetY = mobileCoords.vertical
+                        targetX = mobileCoords.horizontal
+                        sourceY = start.yPos * 0.8
+                        sourceX = start.xPos
+                    }
+
+                    const currentY = lerp(sourceY, targetY, phase1Progress)
+                    const currentX = lerp(sourceX, targetX, phase1Progress)
+                    const currentXAngle = lerp(start.xAngle, end.xAngle, phase1Progress)
+                    const currentYAngle = lerp(start.yAngle, end.yAngle, phase1Progress)
+                    const currentZAngle = lerp(start.zAngle, end.zAngle, phase1Progress)
+                    const currentDepth = lerp(start.depth, end.depth, phase1Progress)
+
+                    let extraYRotation = 0
+                    if (boxKey === "box-b") {
+                        extraYRotation = lerp(0, 180, phase2Progress)
+                    } else if (boxKey === "box-d") {
+                        extraYRotation = lerp(0, -180, phase2Progress)
+                    }
+
+                    boxEl.style.top = currentY + "%"
+                    boxEl.style.left = currentX + "%"
+                    boxEl.style.transform = 
+                        "translate3d(-50%, -50%, " + currentDepth + "px) " +
+                        "rotateX(" + currentXAngle + "deg) " +
+                        "rotateY(" + (currentYAngle + extraYRotation) + "deg) " +
+                        "rotateZ(" + currentZAngle + "deg)"
+                }
+            }
+        })
+
+        return function cleanupTriggers() {
+            ScrollTrigger.getAll().forEach(function(t) { t.kill() })
+        }
+    }, [isSmallScreen])
+
+    function storeBoxRef(element: HTMLDivElement | null, position: number): void {
+        boxElementRefs.current[position] = element
     }
 
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-      if (cleanup) cleanup();
-    };
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!stickySectionRef.current || !logoRef.current || !cubesContainerRef.current || !header1Ref.current || !header2Ref.current) return;
-
-    const stickySection = stickySectionRef.current;
-    const logo = logoRef.current;
-    const cubesContainer = cubesContainerRef.current;
-    const header1 = header1Ref.current;
-    const header2 = header2Ref.current;
-    const mobileAdjustments = getMobileAdjustedPositions(isMobile);
-
-    // Load images into cube faces using available cube images
-    const cubesFaces = cubesContainer.querySelectorAll(".cube > div");
-    const cubeImages = ["/cube1.png", "/cube2.png", "/cube3.png", "/cube4.png", "/cube5.png"];
-    let imageIndex = 0;
-    cubesFaces.forEach((face) => {
-      // Only add image if one doesn't already exist
-      if (!face.querySelector("img")) {
-        const img = document.createElement("img");
-        // Cycle through the 5 available images
-        img.src = cubeImages[imageIndex % cubeImages.length];
-        img.alt = `Cube Image ${imageIndex + 1}`;
-        face.appendChild(img);
-        imageIndex++;
-      }
-    });
-
-    const stickyHeight = window.innerHeight * 4;
-
-    ScrollTrigger.create({
-      trigger: stickySection,
-      start: "top top",
-      end: `+=${stickyHeight}px`,
-      scrub: 1,
-      pin: true,
-      pinSpacing: true,
-      onUpdate: (self) => {
-        // Logo blur and opacity
-        const initialProgress = Math.min(self.progress * 20, 1);
-        logo.style.filter = `blur(${interpolate(0, 20, initialProgress)}px)`;
-        const logoOpacityProgress = self.progress >= 0.02 ? Math.min((self.progress - 0.02) * 100, 1) : 0;
-        logo.style.opacity = String(1 - logoOpacityProgress);
-
-        // Cubes container opacity
-        const cubesOpacityProgress = self.progress > 0.01 ? Math.min((self.progress - 0.01) * 100, 1) : 0;
-        cubesContainer.style.opacity = String(cubesOpacityProgress);
-
-        // Header 1 animations
-        const header1Progress = Math.min(self.progress * 2.5, 1);
-        header1.style.transform = `translate(-50%, -50%) scale(${interpolate(1, 1.5, header1Progress)})`;
-        header1.style.filter = `blur(${interpolate(0, 20, header1Progress)}px)`;
-        header1.style.opacity = String(1 - header1Progress);
-
-        // Header 2 animations
-        const header2StartProgress = (self.progress - 0.4) * 10;
-        const header2Progress = Math.max(0, Math.min(header2StartProgress, 1));
-        const header2scale = interpolate(0.75, 1, header2Progress);
-        const header2Blur = interpolate(10, 0, header2Progress);
-
-        header2.style.transform = `translate(-50%, -50%) scale(${header2scale})`;
-        header2.style.filter = `blur(${header2Blur}px)`;
-        header2.style.opacity = String(header2Progress);
-
-        // Cube animations
-        const firstPhaseProgress = Math.min(self.progress * 2, 1);
-        const secondPhaseProgress = self.progress >= 0.5 ? (self.progress - 0.5) * 2 : 0;
-
-        Object.entries(cubesData).forEach(([cubeClass, data], index) => {
-          const cube = cubeRefs.current[index];
-          if (!cube) return;
-
-          const { initial, final } = data;
-
-          // Use mobile-adjusted positions if on mobile, otherwise use original
-          let finalTop = final.top;
-          let finalLeft = final.left;
-          let initialTop = initial.top;
-          let initialLeft = initial.left;
-
-          if (mobileAdjustments && mobileAdjustments[cubeClass as keyof typeof mobileAdjustments]) {
-            const mobilePos = mobileAdjustments[cubeClass as keyof typeof mobileAdjustments];
-            finalTop = mobilePos.top;
-            finalLeft = mobilePos.left;
-            // Keep initial positions closer to center on mobile
-            initialTop = initial.top * 0.8;
-            initialLeft = initial.left;
-          }
-
-          const currentTop = interpolate(initialTop, finalTop, firstPhaseProgress);
-          const currentLeft = interpolate(initialLeft, finalLeft, firstPhaseProgress);
-          const currentRotateX = interpolate(initial.rotateX, final.rotateX, firstPhaseProgress);
-          const currentRotateY = interpolate(initial.rotateY, final.rotateY, firstPhaseProgress);
-          const currentRotateZ = interpolate(initial.rotateZ, final.rotateZ, firstPhaseProgress);
-          const currentZ = interpolate(initial.z, final.z, firstPhaseProgress);
-
-          let additionalRotation = 0;
-          if (cubeClass === "cube-2") {
-            additionalRotation = interpolate(0, 180, secondPhaseProgress);
-          } else if (cubeClass === "cube-4") {
-            additionalRotation = interpolate(0, -180, secondPhaseProgress);
-          }
-
-          cube.style.top = `${currentTop}%`;
-          cube.style.left = `${currentLeft}%`;
-          cube.style.transform = `
-            translate3d(-50%, -50%, ${currentZ}px)
-            rotateX(${currentRotateX}deg)
-            rotateY(${currentRotateY + additionalRotation}deg)
-            rotateZ(${currentRotateZ}deg)
-          `;
-        });
-      },
-    });
-
-    return () => {
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-    };
-  }, [isMobile]);
-
-  const addToRefs = (el: HTMLDivElement | null, index: number) => {
-    cubeRefs.current[index] = el;
-  };
-
-  return (
-    <>
-      <section ref={stickySectionRef} className="sticky">
-        <div ref={logoRef} className="logo">
-          <div className="col">
-            <div className="block block-1"></div>
-            <div className="block block-2"></div>
-          </div>
-          <div className="col">
-            <div className="block block-3"></div>
-            <div className="block block-4"></div>
-          </div>
-          <div className="col">
-            <div className="block block-5"></div>
-            <div className="block block-6"></div>
-          </div>
-        </div>
-        <div ref={cubesContainerRef} className="cubes">
-          <Cube ref={(el) => addToRefs(el, 0)} cubeClass="cube-1" size={cubeSize} />
-          <Cube ref={(el) => addToRefs(el, 1)} cubeClass="cube-2" size={cubeSize} />
-          <Cube ref={(el) => addToRefs(el, 2)} cubeClass="cube-3" size={cubeSize} />
-          <Cube ref={(el) => addToRefs(el, 3)} cubeClass="cube-4" size={cubeSize} />
-          <Cube ref={(el) => addToRefs(el, 4)} cubeClass="cube-5" size={cubeSize} />
-          <Cube ref={(el) => addToRefs(el, 5)} cubeClass="cube-6" size={cubeSize} />
-        </div>
-        <div ref={header1Ref} className="header-1">
-          <h1>
-            The first media company crafted for the digital first generation.
-          </h1>
-        </div>
-        <div ref={header2Ref} className="header-2">
-          <h2>Where innovation meets precision.</h2>
-          <p>
-            Symphonia unites visionary thinkers, creative architects, and
-            analytical experts, collaborating seamlessly to transform challenges
-            into oppurtunities. Together, we deliver tailored solutions that drive
-            impact and inspire growth.
-          </p>
-        </div>
-      </section>
-      <section className="about">
-        <h2>Your next section goes here.</h2>
-      </section>
-    </>
-  );
+    return (
+        <>
+            <section ref={pinnedSectionRef} className="sticky">
+                <div ref={brandingRef} className="logo">
+                    <div className="col">
+                        <div className="block block-1"></div>
+                        <div className="block block-2"></div>
+                    </div>
+                    <div className="col">
+                        <div className="block block-3"></div>
+                        <div className="block block-4"></div>
+                    </div>
+                    <div className="col">
+                        <div className="block block-5"></div>
+                        <div className="block block-6"></div>
+                    </div>
+                </div>
+                <div ref={boxContainerRef} className="cubes">
+                    <Box3D ref={function(el) { storeBoxRef(el, 0) }} identifier="box-a" dimension={boxDimension} />
+                    <Box3D ref={function(el) { storeBoxRef(el, 1) }} identifier="box-b" dimension={boxDimension} />
+                    <Box3D ref={function(el) { storeBoxRef(el, 2) }} identifier="box-c" dimension={boxDimension} />
+                    <Box3D ref={function(el) { storeBoxRef(el, 3) }} identifier="box-d" dimension={boxDimension} />
+                    <Box3D ref={function(el) { storeBoxRef(el, 4) }} identifier="box-e" dimension={boxDimension} />
+                    <Box3D ref={function(el) { storeBoxRef(el, 5) }} identifier="box-f" dimension={boxDimension} />
+                </div>
+                <div ref={primaryTextRef} className="header-1">
+                    <h1>
+                        The first media company crafted for the digital first generation.
+                    </h1>
+                </div>
+                <div ref={secondaryTextRef} className="header-2 text-center px-4 sm:px-8 max-w-2xl mx-auto top-[40%] md:top-[50%]">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-white">Where innovation meets precision.</h2>
+                    <p className="text-sm sm:text-base md:text-lg text-gray-300 leading-relaxed">
+                        Symphonia unites visionary thinkers, creative architects, and
+                        analytical experts, collaborating seamlessly to transform challenges
+                        into oppurtunities. Together, we deliver tailored solutions that drive
+                        impact and inspire growth.
+                    </p>
+                </div>
+            </section>
+            <section className="about">
+                <h2>Your next section goes here.</h2>
+            </section>
+        </>
+    )
 }
